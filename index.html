@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Çorlu Akıl Oyunları Derneği — Takım Maçı Kâğıdı</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ============================ BAŞLIK ============================ -->
+  <header class="sheet-head">
+    <div class="club">ÇORLU AKIL OYUNLARI DERNEĞİ</div>
+    <h1>TAKIM MAÇI KÂĞIDI</h1>
+  </header>
+
+  <!-- ============================ 1) KURULUM ============================ -->
+  <section class="card setup" id="setupCard">
+
+    <div class="resume" id="resumeBox" hidden>
+      <div class="resume-text">
+        Devam eden bir maç var: <b id="resumeInfo">—</b>
+      </div>
+      <div class="resume-actions">
+        <button type="button" class="btn primary" id="resumeBtn">Bu maça katıl</button>
+        <button type="button" class="btn danger" id="discardBtn">Sil, yeni maç kur</button>
+      </div>
+    </div>
+
+    <div id="setupForm">
+      <div class="step">
+        <div class="step-no">1</div>
+        <div class="step-body">
+          <h2>Hangi odadasınız?</h2>
+          <div class="room-pick" id="roomPick">
+            <button type="button" class="room-card" data-room="open" aria-pressed="false">
+              <span class="rc-title">AÇIK ODA</span>
+              <span class="rc-sub">Open Room</span>
+            </button>
+            <button type="button" class="room-card" data-room="closed" aria-pressed="false">
+              <span class="rc-title">KAPALI ODA</span>
+              <span class="rc-sub">Closed Room</span>
+            </button>
+          </div>
+          <p class="hint">Her oda kendi skorlarını girer. İki oda da kaydedene kadar
+             diğer odanın skoru görünmez.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-no">2</div>
+        <div class="step-body">
+          <h2>Maç</h2>
+          <div class="seg tabs" id="macTabs">
+            <button type="button" data-v="yeni" aria-pressed="true">Yeni maç kur</button>
+            <button type="button" data-v="katil" aria-pressed="false">Oyun koduyla katıl</button>
+          </div>
+
+          <div class="panel" id="panelYeni">
+            <div class="team-inputs">
+              <label class="tf">
+                <span>Ev sahibi takım</span>
+                <input id="homeInput" maxlength="28" placeholder="Ev sahibi takım adı" value="EV SAHİBİ">
+              </label>
+              <label class="tf">
+                <span>Misafir takım</span>
+                <input id="awayInput" maxlength="28" placeholder="Misafir takım adı" value="MİSAFİR">
+              </label>
+            </div>
+
+            <div class="sub">Kaç board oynanacak?</div>
+            <div class="count-row">
+              <button type="button" class="btn step-btn" id="countMinus" aria-label="Azalt">−</button>
+              <input type="number" id="boardCount" min="8" max="20" step="1" value="16"
+                     inputmode="numeric" aria-label="Board sayısı">
+              <button type="button" class="btn step-btn" id="countPlus" aria-label="Artır">+</button>
+              <div class="quick" id="countQuick">
+                <button type="button" data-n="8">8</button>
+                <button type="button" data-n="10">10</button>
+                <button type="button" data-n="12">12</button>
+                <button type="button" data-n="16">16</button>
+                <button type="button" data-n="20">20</button>
+              </div>
+            </div>
+            <p class="hint">En az 8, en çok 20 board. Maçı kuran taraf bir <b>oyun kodu</b> alır;
+               karşı oda o kodu girerek aynı kâğıda bağlanır.</p>
+          </div>
+
+          <div class="panel" id="panelKatil" hidden>
+            <label class="tf kod-gir">
+              <span>Oyun kodu (6 hane)</span>
+              <input id="kodInput" maxlength="7" placeholder="ÖRN. K7M4Q9"
+                     autocapitalize="characters" autocomplete="off" spellcheck="false">
+            </label>
+            <p class="hint">Kodu maçı kuran oda söyler. Takım adları ve board sayısı kendiliğinden gelir.</p>
+          </div>
+        </div>
+      </div>
+
+      <details class="advanced">
+        <summary>Oturma düzeni (gelişmiş)</summary>
+        <div class="seating">
+          <span class="lbl">Açık odada ev sahibi takım:</span>
+          <div class="seg" id="seatSeg">
+            <button type="button" data-v="NS" aria-pressed="true">Kuzey‑Güney</button>
+            <button type="button" data-v="EW" aria-pressed="false">Doğu‑Batı</button>
+          </div>
+          <span class="hint">Kapalı odada takımlar otomatik yer değiştirir.</span>
+        </div>
+      </details>
+
+      <div class="actions">
+        <button type="button" class="btn primary big" id="startBtn">MAÇI KUR VE KOD AL</button>
+        <button type="button" class="btn" id="localBtn" title="İnternet olmadan, tek cihazda">
+          İnternetsiz — tek cihazda kullan
+        </button>
+      </div>
+      <div class="msg" id="setupMsg"></div>
+    </div>
+  </section>
+
+  <!-- ============================ 2) MAÇ KÂĞIDI ============================ -->
+  <section id="sheet" hidden>
+
+    <div class="card scorebar">
+      <div class="scoreboard">
+        <div class="team home">
+          <div class="team-name" id="homeName">EV SAHİBİ</div>
+          <div class="imp" id="homeTotal">0</div>
+        </div>
+        <div class="sep">—</div>
+        <div class="team away">
+          <div class="team-name" id="awayName">MİSAFİR</div>
+          <div class="imp" id="awayTotal">0</div>
+        </div>
+      </div>
+      <div class="progress">
+        <span>Board: <b id="playedCount">0</b>/<b id="totalCount">0</b></span>
+        <span>Fark: <b id="impDiff">0 IMP</b></span>
+        <span id="leaderText">Berabere</span>
+      </div>
+      <div class="roombar no-print">
+        <span class="room-badge" id="roomBadge">AÇIK ODA</span>
+        <button type="button" class="kod-chip" id="kodChip" hidden title="Kopyalamak için tıklayın">
+          <span class="k-lbl">OYUN KODU</span><span class="k-val" id="kodVal">——————</span>
+        </button>
+        <span class="net-dot" id="netDot" hidden><i></i><span id="netText">bağlanıyor…</span></span>
+        <span class="hint" id="roomHint">Skorları bu oda için giriyorsunuz.</span>
+        <button type="button" class="btn small" id="switchRoomBtn">Oda değiştir</button>
+      </div>
+    </div>
+
+    <div class="card list-card">
+      <div class="list-head no-print">
+        <span class="c-board">BOARD</span>
+        <span class="c-mine" id="mineHead">AÇIK ODA — kontrat</span>
+        <span class="c-score">SKOR</span>
+        <span class="c-other" id="otherHead">KAPALI ODA</span>
+        <span class="c-net">NET / IMP</span>
+        <span class="c-act"></span>
+      </div>
+      <div id="rows"></div>
+      <div class="msg" id="listMsg"></div>
+    </div>
+
+    <!-- yazdırma tablosu -->
+    <table class="print-table" id="printTable"><thead><tr>
+      <th>Board</th><th>Açık oda</th><th class="num">Skor</th>
+      <th>Kapalı oda</th><th class="num">Skor</th>
+      <th class="num">Net</th><th class="num">IMP</th><th>Kazanan</th>
+    </tr></thead><tbody id="printRows"></tbody><tfoot id="printFoot"></tfoot></table>
+
+    <div class="card actions-card no-print">
+      <button type="button" class="btn" id="printBtn">Yazdır</button>
+      <button type="button" class="btn" id="csvBtn">CSV indir</button>
+      <button type="button" class="btn" id="jsonBtn">JSON yedekle</button>
+      <button type="button" class="btn" id="restoreBtn">JSON geri yükle</button>
+      <button type="button" class="btn danger" id="newMatchBtn">Yeni maç</button>
+      <input type="file" id="restoreInput" accept=".json,application/json" hidden>
+    </div>
+
+    <p class="no-print foot-note">
+      Skorlar <b>SKOR PUANLAMA.xlsx</b> dosyasından üretilmiştir. Maç verisi bu tarayıcıda saklanır.
+    </p>
+  </section>
+
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="sync.js"></script>
+<script src="bridge-data.js"></script>
+<script src="imp-scale.js"></script>
+<script src="scoring.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
