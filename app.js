@@ -40,7 +40,8 @@
       boards.push({ no: i, vuln: null, open: null, closed: null, durum: { open: false, closed: false } });
     }
     return {
-      version: 3, kod: kod, mod: mod,
+      version: 4, kod: kod, mod: mod, bitti: false,
+      tamam: { open: false, closed: false },
       homeTeam: ev, awayTeam: misafir,
       boardCount: boardSayisi, openHomeSide: openHomeSide,
       createdAt: new Date().toISOString(),
@@ -96,6 +97,15 @@
   function otherRoom() { return room === 'open' ? 'closed' : 'open'; }
   function teamName(which) { return which === 'home' ? match.homeTeam : match.awayTeam; }
   function girdiMi(b, oda) { return !!(b[oda] || (b.durum && b.durum[oda])); }
+  function benimSayim() {
+    return match.boards.filter(function (b) { return !!b[room]; }).length;
+  }
+  function karsiSayim() {
+    return match.boards.filter(function (b) { return girdiMi(b, otherRoom()); }).length;
+  }
+  function hepsiGirildi() {
+    return match.boards.every(function (b) { return isComplete(b.open) && isComplete(b.closed); });
+  }
 
   function rowResult(b) {
     if (!isComplete(b.open) || !isComplete(b.closed)) return null;
@@ -301,6 +311,8 @@
      MAÇ KÂĞIDI
      ==================================================================== */
   function openSheet() {
+    if (!match.tamam) match.tamam = { open: false, closed: false };
+    if (typeof match.bitti !== 'boolean') match.bitti = false;
     $('#setupCard').hidden = true;
     $('#sheet').hidden = false;
     drafts = match.boards.map(function (b) {
@@ -343,8 +355,9 @@
   }
 
   /* ------------------------------------------------- bulut dinleyicisi */
+  let tazeleZamani = null;
   function baglan() {
-    Sync.dinle(match.kod, function (ev) {
+    Sync.dinle(match.kod, match.boardCount, function (ev) {
       if (ev.tur === 'hata') { cloudHata = true; netDurum(navigator.onLine); return; }
       cloudHata = false; netDurum(navigator.onLine);
 
@@ -357,22 +370,57 @@
         cacheSave(); refreshAll();
         return;
       }
-      const b = match.boards[ev.no - 1];
-      if (!b) return;
+      if (ev.tur === 'tamam') {
+        match.tamam = ev.tamam;
+        cacheSave(); refreshTotals();
+        /* karşı taraf da bitirdiyse kilidi açmayı dene */
+        if (!match.bitti && match.tamam.open && match.tamam.closed) Sync.acmayiDene(match.kod);
+        return;
+      }
+
+      if (ev.tur === 'acildi') {
+        acildi(ev.satirlar);
+        return;
+      }
 
       if (ev.tur === 'durum') {
+        const b = match.boards[ev.no - 1];
+        if (!b) return;
         b.durum = ev.durum;
-        cacheSave(); refreshRow(ev.no - 1);
-      } else if (ev.tur === 'satir') {
-        b.open = ev.open; b.closed = ev.closed;
-        b.durum = { open: true, closed: true };
-        if (!drafts[ev.no - 1] || !isComplete(drafts[ev.no - 1])) {
-          drafts[ev.no - 1] = Object.assign({}, b[room]);
-          doldurSatir(ev.no - 1);
+        cacheSave(); refreshRow(ev.no - 1); refreshTotals();
+        if (match.bitti) {                       // açıldıktan sonraki düzeltmeler
+          clearTimeout(tazeleZamani);
+          tazeleZamani = setTimeout(function () {
+            Sync.tumSatirlariGetir(match.kod, match.boardCount).then(function (sat) {
+              if (sat) acildi(sat, true);
+            });
+          }, 800);
         }
-        cacheSave(); refreshAll();
       }
     });
+  }
+
+  /* Kilit açıldı: bütün satırlar sunucudan geldi. */
+  function acildi(satirlar, sessiz) {
+    satirlar.forEach(function (x) {
+      const b = match.boards[x.no - 1];
+      if (!b) return;
+      if (x.open) b.open = x.open;
+      if (x.closed) b.closed = x.closed;
+      b.durum = { open: !!x.open, closed: !!x.closed };
+    });
+    match.bitti = true;
+    drafts = match.boards.map(function (b, i) {
+      return b[room] ? Object.assign({}, b[room]) : (drafts[i] || blankEntry());
+    });
+    match.boards.forEach(function (b, i) { doldurSatir(i); });
+    cacheSave(); refreshAll();
+    if (!sessiz) {
+      const tot = S.calculateMatchTotal(match.boards.map(rowResult).filter(Boolean));
+      note($('#listMsg'), 'MAÇ BİTTİ — skorlar açıldı. ' + match.homeTeam + ' ' + tot.home +
+        ' — ' + tot.away + ' ' + match.awayTeam, 'ok');
+      window.scrollTo(0, 0);
+    }
   }
 
   function buildRows() {
@@ -534,12 +582,13 @@
       });
     }
     const res = rowResult(b);
-    if (res) {
-      note(msg, 'Board ' + b.no + ' tamam — ' + (res.imps === 0 ? 'berabere' :
+    if (match.bitti && res) {
+      note(msg, 'Board ' + b.no + ' güncellendi — ' + (res.imps === 0 ? 'berabere' :
         res.imps + ' IMP ' + teamName(res.winner)), 'ok');
     } else {
+      const kalan = match.boardCount - benimSayim();
       note(msg, 'Board ' + b.no + ' ' + (wasSaved ? 'güncellendi' : 'kaydedildi') + '. ' +
-        ROOM_TR[otherRoom()].toLowerCase() + ' kaydedince skor açılacak.', 'ok');
+        (kalan > 0 ? kalan + ' board kaldı.' : 'Bütün boardları girdiniz — “maçı bitir” diyebilirsiniz.'), 'ok');
     }
   }
 
@@ -576,7 +625,7 @@
     }
 
     const cOther = row.querySelector('.c-other');
-    if (res && theirs) {
+    if (match.bitti && res && theirs) {
       const tRaw = rawScoreOf(b, theirs);
       cOther.className = 'c-other open';
       cOther.innerHTML = '<span class="lbl">' + labelOf(theirs) + '</span>' +
@@ -593,7 +642,7 @@
     }
 
     const cNet = row.querySelector('.c-net');
-    if (res) {
+    if (match.bitti && res) {
       const who = res.winner === 'none' ? 'BERABERE' : teamName(res.winner);
       cNet.className = 'c-net ' + res.winner;
       cNet.innerHTML =
@@ -601,8 +650,8 @@
         '<span class="imp">' + res.imps + ' IMP</span>' +
         '<span class="who">' + who + '</span>';
     } else {
-      cNet.className = 'c-net muted';
-      cNet.innerHTML = '<span class="net">—</span>';
+      cNet.className = 'c-net muted kilitli';
+      cNet.innerHTML = '<span class="net">' + (mine ? '🔒' : '—') + '</span>';
     }
 
     const btn = row.querySelector('button.save');
@@ -610,22 +659,106 @@
     btn.textContent = mine ? 'Güncelle' : 'Kaydet';
     btn.className = 'btn save' + (mine ? (dirty ? ' warn' : ' done') : ' primary');
     btn.disabled = !!mine && !dirty;
-    row.className = 'row' + (res ? ' complete' : (mine ? ' mine-saved' : ''));
+    row.className = 'row' + ((match.bitti && res) ? ' complete' : (mine ? ' mine-saved' : ''));
   }
 
   function refreshTotals() {
     const done = match.boards.map(rowResult).filter(Boolean);
     const tot = S.calculateMatchTotal(done);
-    $('#homeTotal').textContent = tot.home;
-    $('#awayTotal').textContent = tot.away;
-    $('#playedCount').textContent = done.length;
-    const diff = Math.abs(tot.home - tot.away);
-    $('#impDiff').textContent = diff + ' IMP';
-    $('#leaderText').textContent = tot.home === tot.away ? 'Berabere'
-      : (tot.home > tot.away ? match.homeTeam + ' önde' : match.awayTeam + ' önde');
-    $('#homeTotal').parentElement.classList.toggle('leading', tot.home > tot.away);
-    $('#awayTotal').parentElement.classList.toggle('leading', tot.away > tot.home);
+    const sb = document.querySelector('.scoreboard');
+
+    $('#playedCount').textContent = benimSayim();
+    $('#otherProg').textContent = 'Karşı oda: ' + karsiSayim() + '/' + match.boardCount;
+
+    if (!match.bitti) {
+      sb.classList.add('kilitli');
+      $('#homeTotal').textContent = '—';
+      $('#awayTotal').textContent = '—';
+      $('#impDiff').textContent = '—';
+      $('#leaderText').innerHTML = '<span class="kilit">🔒 Skorlar maç bitince açılır</span>';
+      $('#homeTotal').parentElement.classList.remove('leading');
+      $('#awayTotal').parentElement.classList.remove('leading');
+    } else {
+      sb.classList.remove('kilitli');
+      $('#homeTotal').textContent = tot.home;
+      $('#awayTotal').textContent = tot.away;
+      $('#impDiff').textContent = Math.abs(tot.home - tot.away) + ' IMP';
+      $('#leaderText').textContent = tot.home === tot.away ? 'Berabere'
+        : (tot.home > tot.away ? match.homeTeam + ' önde' : match.awayTeam + ' önde');
+      $('#homeTotal').parentElement.classList.toggle('leading', tot.home > tot.away);
+      $('#awayTotal').parentElement.classList.toggle('leading', tot.away > tot.home);
+    }
     buildPrintTable(done, tot);
+    refreshFinish();
+  }
+
+  /* ------------------------------------------------- maçı bitir şeridi */
+  function refreshFinish() {
+    const kart = $('#finishCard');
+    const btn = $('#finishBtn');
+    const N = match.boardCount;
+    const benim = benimSayim(), karsi = karsiSayim();
+    const hepsiBenden = benim >= N;
+
+    if (match.bitti) {
+      kart.className = 'card finish-card no-print acik';
+      $('#fiLock').textContent = '🔓';
+      $('#fiTitle').textContent = 'MAÇ BİTTİ — karşılaştırmalı skorlar açık';
+      $('#fiSub').textContent = 'Satırları düzeltirseniz sonuç kendiliğinden güncellenir.';
+      $('#printBtn').disabled = false; $('#csvBtn').disabled = false;
+      return;
+    }
+
+    $('#printBtn').disabled = true; $('#csvBtn').disabled = true;
+    $('#fiLock').textContent = '🔒';
+    $('#fiTitle').textContent = 'Karşılaştırmalı skorlar kapalı';
+
+    if (bulut()) {
+      const benBitirdim = !!match.tamam[room];
+      btn.disabled = !hepsiBenden || benBitirdim;
+      btn.textContent = benBitirdim ? 'BİTİRDİNİZ — KARŞI ODA BEKLENİYOR' : 'KAYDET VE MAÇI BİTİR';
+      kart.className = 'card finish-card no-print' + (hepsiBenden && !benBitirdim ? ' hazir' : '');
+      $('#fiSub').textContent = benBitirdim
+        ? 'Siz bitirdiniz. Karşı oda ' + karsi + '/' + N + ' board girdi' +
+          (match.tamam[otherRoom()] ? ' ve bitirdi — açılıyor…' : '; bitirmesi bekleniyor.')
+        : (hepsiBenden
+            ? 'Bütün boardları girdiniz. “Maçı bitir” deyin; karşı oda da bitirince skorlar açılacak.'
+            : 'Siz ' + benim + '/' + N + ' board girdiniz. Hepsi girilince düğme açılacak.');
+    } else {
+      const hepsi = hepsiGirildi();
+      btn.disabled = !hepsi;
+      btn.textContent = 'KAYDET VE MAÇI BİTİR';
+      kart.className = 'card finish-card no-print' + (hepsi ? ' hazir' : '');
+      $('#fiSub').textContent = hepsi
+        ? 'Bütün boardlar iki oda için de girildi. Maçı bitirip skorları açabilirsiniz.'
+        : 'Tek cihaz: iki odanın da bütün boardları girilmeli (şu an ' +
+          match.boards.filter(function (b) { return isComplete(b.open) && isComplete(b.closed); }).length +
+          '/' + N + ').';
+    }
+  }
+
+  function maciBitir() {
+    const N = match.boardCount;
+    if (!match.bitti && !bulut()) {
+      if (!hepsiGirildi()) { note($('#listMsg'), 'Önce bütün boardlar iki oda için de girilmeli.', 'err'); return; }
+      match.bitti = true; cacheSave(); refreshAll();
+      note($('#listMsg'), 'Maç bitti — skorlar açıldı.', 'ok');
+      window.scrollTo(0, 0);
+      return;
+    }
+    if (benimSayim() < N) { note($('#listMsg'), 'Önce bütün boardları girin (' + benimSayim() + '/' + N + ').', 'err'); return; }
+    $('#finishBtn').disabled = true;
+    Sync.bitirdim(match.kod, room, N).then(function () {
+      match.tamam[room] = true; cacheSave(); refreshFinish();
+      return Sync.acmayiDene(match.kod);
+    }).then(function (acildiMi) {
+      note($('#listMsg'), acildiMi
+        ? 'Maç bitti — skorlar açılıyor…'
+        : 'Bitirdiniz. Karşı oda da bitirince skorlar iki cihazda birden açılacak.', 'ok');
+    }).catch(function (e) {
+      note($('#listMsg'), 'Bitirilemedi: ' + e.message, 'err');
+      refreshFinish();
+    });
   }
 
   function buildPrintTable(done, tot) {
@@ -674,6 +807,7 @@
       note($('#listMsg'), 'Oyun kodu kopyalandı: ' + k, 'ok');
     });
 
+    $('#finishBtn').addEventListener('click', maciBitir);
     $('#printBtn').addEventListener('click', function () { window.print(); });
 
     $('#csvBtn').addEventListener('click', function () {

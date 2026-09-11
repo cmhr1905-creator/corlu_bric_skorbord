@@ -355,3 +355,22 @@ h2 { font-size: 17px; margin: 0 0 10px; }
 @media (max-width: 900px) {
   .kod-gir input { font-size: 22px; max-width: none; }
 }
+
+/* ==================================================== maçı bitir / kilit */
+.finish-card {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap;
+  border: 1px solid var(--warn-line); background: var(--warn-bg);
+}
+.finish-card.hazir { border-color: var(--home); background: var(--home-bg); }
+.finish-card.acik  { border-color: #bfe3d0; background: var(--ok-bg); }
+.fi-head { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.fi-lock { font-size: 26px; line-height: 1; }
+.fi-title { font-weight: 800; font-size: 15px; }
+.fi-sub { font-size: 13px; color: var(--ink-soft); }
+.fi-act { display: flex; align-items: center; gap: 10px; }
+.finish-card.acik .fi-act { display: none; }
+
+.scoreboard.kilitli .imp { color: var(--line); }
+.progress .kilit { color: var(--warn-line); font-weight: 700; }
+.c-net.kilitli .net { color: var(--line); }
