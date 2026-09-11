@@ -15,7 +15,7 @@
   const ROOM_KEY    = 'bricOda';          // sessionStorage: sekmeye özel oda
 
   const DIR_ORDER = [['N', 'K'], ['E', 'D'], ['S', 'G'], ['W', 'B']];
-  const DBL_ORDER = [['normal', '—'], ['doubled', 'D'], ['redoubled', 'RD']];
+  const DBL_ORDER = [['normal', '—'], ['doubled', 'Dbl'], ['redoubled', 'RDbl']];
   const ROOM_TR   = { open: 'AÇIK ODA', closed: 'KAPALI ODA' };
   const VULN_TR   = { '-': 'Zon yok', 'NS': 'Zon K‑G', 'EW': 'Zon D‑B', 'ALL': 'Zon her iki taraf' };
   const VULN_SHORT= { '-': '—', 'NS': 'K‑G', 'EW': 'D‑B', 'ALL': 'HEPSİ' };

@@ -20,7 +20,7 @@
     S: { code: 'S', label: 'Güney', short: 'G', side: 'NS' },
     W: { code: 'W', label: 'Batı', short: 'B', side: 'EW' }
   };
-  const DOUBLING = { normal: 'Normal', doubled: 'Dbl', redoubled: 'Rdbl' };
+  const DOUBLING = { normal: 'Normal', doubled: 'Dbl', redoubled: 'RDbl' };
 
   /* Standart 16'lik board zon dongusu (1. board zon yok). */
   const VULN_CYCLE = ['-', 'NS', 'EW', 'ALL', 'NS', 'EW', 'ALL', '-',
@@ -46,7 +46,7 @@
   function maxUndertricks(level) { return 6 + Number(level); }
 
   function contractLabel(level, strain, result, doubling) {
-    const d = doubling === 'doubled' ? ' D' : (doubling === 'redoubled' ? ' RD' : '');
+    const d = doubling === 'doubled' ? ' Dbl' : (doubling === 'redoubled' ? ' RDbl' : '');
     const r = result === 0 ? '=' : (result > 0 ? '+' + result : String(result));
     return `${level}${STRAIN_SYMBOL[strain] || strain}${d} ${r}`;
   }

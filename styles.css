@@ -239,7 +239,7 @@ h2 { font-size: 17px; margin: 0 0 10px; }
 .c-mine select:disabled { background: var(--line-soft); color: var(--ink-soft); }
 .f-level  { width: 62px; }
 .f-strain { width: 66px; }
-.f-dbl    { width: 62px; }
+.f-dbl    { width: 76px; }
 .f-result { width: 82px; }
 .f-dir    { width: 72px; }
 
