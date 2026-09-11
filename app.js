@@ -14,7 +14,7 @@
   const SON_MAC_KEY = 'bricSonMac';
   const ROOM_KEY    = 'bricOda';          // sessionStorage: sekmeye özel oda
 
-  const DIR_ORDER = [['N', 'K'], ['E', 'D'], ['S', 'G'], ['W', 'B']];
+  const DIR_ORDER = [['N', 'Kuzey'], ['E', 'Doğu'], ['S', 'Güney'], ['W', 'Batı']];
   const DBL_ORDER = [['normal', '—'], ['doubled', 'Dbl'], ['redoubled', 'RDbl']];
   const ROOM_TR   = { open: 'AÇIK ODA', closed: 'KAPALI ODA' };
   const VULN_TR   = { '-': 'Zon yok', 'NS': 'Zon K‑G', 'EW': 'Zon D‑B', 'ALL': 'Zon her iki taraf' };
@@ -453,12 +453,12 @@
 
     const selLevel = document.createElement('select');
     selLevel.className = 'f-level'; selLevel.title = 'Kontrat seviyesi';
-    selLevel.appendChild(opt('', 'Sev.', !d.level));
+    selLevel.appendChild(opt('', '—', !d.level));
     [1, 2, 3, 4, 5, 6, 7].forEach(function (n) { selLevel.appendChild(opt(n, n, d.level === n)); });
 
     const selStrain = document.createElement('select');
     selStrain.className = 'f-strain'; selStrain.title = 'Renk';
-    selStrain.appendChild(opt('', 'Renk', !d.strain));
+    selStrain.appendChild(opt('', '—', !d.strain));
     S.STRAINS.forEach(function (s) { selStrain.appendChild(opt(s, S.STRAIN_SYMBOL[s], d.strain === s)); });
 
     const selResult = document.createElement('select');
@@ -470,11 +470,22 @@
 
     const selDir = document.createElement('select');
     selDir.className = 'f-dir'; selDir.title = 'Deklaran yönü';
-    selDir.appendChild(opt('', 'Dekl.', !d.direction));
+    selDir.appendChild(opt('', '— yön —', !d.direction));
     DIR_ORDER.forEach(function (p) { selDir.appendChild(opt(p[0], p[1], d.direction === p[0])); });
 
-    cMine.appendChild(selLevel); cMine.appendChild(selStrain); cMine.appendChild(selDbl);
-    cMine.appendChild(selResult); cMine.appendChild(selDir);
+    /* her alan kendi etiketiyle sarılır (dar ekranda etiket görünür) */
+    const alan = function (sel, sinif, etiket) {
+      const w = document.createElement('span');
+      w.className = 'fld ' + sinif;
+      w.dataset.lbl = etiket;
+      w.appendChild(sel);
+      return w;
+    };
+    cMine.appendChild(alan(selLevel,  'fld-level',  'Seviye'));
+    cMine.appendChild(alan(selStrain, 'fld-strain', 'Renk'));
+    cMine.appendChild(alan(selDbl,    'fld-dbl',    'Kontr'));
+    cMine.appendChild(alan(selResult, 'fld-result', 'Sonuç'));
+    cMine.appendChild(alan(selDir,    'fld-dir',    'Deklaran'));
     row.appendChild(cMine);
 
     const cScore = document.createElement('div'); cScore.className = 'c-score';
@@ -531,7 +542,7 @@
     const level = drafts[i].level;
     const prev = drafts[i].result;
     sel.innerHTML = '';
-    sel.appendChild(opt('', 'Sonuç', true));
+    sel.appendChild(opt('', '—', true));
     if (!level) { sel.disabled = true; drafts[i].result = null; return; }
     sel.disabled = false;
     for (let o = S.maxOvertricks(level); o >= 1; o--) sel.appendChild(opt(o, '+' + o));
