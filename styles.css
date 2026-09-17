@@ -263,6 +263,7 @@ h2 { font-size: 17px; margin: 0 0 10px; }
   color: var(--ink); min-width: 0;
 }
 .c-mine select:focus { outline: 2px solid var(--home); outline-offset: -1px; }
+.row.pas .f-strain { font-weight: 800; }
 .c-mine select:disabled { background: var(--line-soft); color: var(--ink-soft); }
 .fld-level,  .list-head .fld-level  { width: var(--w-level); }
 .fld-strain, .list-head .fld-strain { width: var(--w-strain); }
@@ -275,6 +276,7 @@ h2 { font-size: 17px; margin: 0 0 10px; }
 .c-score.muted { color: var(--line); font-weight: 600; }
 .c-score.pos { color: var(--ok); }
 .c-score.neg { color: var(--red); }
+.c-score.zero { color: var(--ink-soft); }        /* pas geçilen board: 0 */
 
 .c-other { font-size: 13.5px; display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; }
 .c-other .lbl { font-weight: 700; }
@@ -282,6 +284,7 @@ h2 { font-size: 17px; margin: 0 0 10px; }
 .c-other .sc { font-weight: 800; font-variant-numeric: tabular-nums; }
 .c-other .sc.pos { color: var(--ok); }
 .c-other .sc.neg { color: var(--red); }
+.c-other .sc.zero { color: var(--ink-soft); }
 .c-other .lock {
   font-size: 12px; font-weight: 700; color: var(--ink-soft);
   background: var(--line-soft); border-radius: 6px; padding: 3px 8px;

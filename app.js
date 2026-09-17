@@ -86,8 +86,15 @@
     const side = S.DIRECTIONS[direction] ? S.DIRECTIONS[direction].side : null;
     return side === v;
   }
+  function pasMi(e) { return !!e && S.isPass(e.strain); }
   function isComplete(e) {
+    if (pasMi(e)) return true;                 // pas: başka giriş beklemez
     return !!(e && e.level && e.strain && e.direction && e.result !== null && e.result !== undefined);
+  }
+  /* Renk kutusunda "Pas" seçildiğinde satırın kalan alanları anlamsızlaşır. */
+  function pasaCevir(d) {
+    d.strain = S.PASS; d.level = null; d.result = 0;
+    d.doubling = 'normal'; d.direction = null;
   }
   function sameEntry(a, b) {
     if (!a || !b) return false;
@@ -128,7 +135,10 @@
     } catch (e) { return null; }
   }
   function labelOf(e) { return S.contractLabel(e.level, e.strain, Number(e.result), e.doubling || 'normal'); }
-  function sideShort(dir) { return S.DIRECTIONS[dir].side === 'NS' ? 'K‑G' : 'D‑B'; }
+  function sideShort(dir) {
+    if (!S.DIRECTIONS[dir]) return '—';        // pas geçilen boardda deklaran yok
+    return S.DIRECTIONS[dir].side === 'NS' ? 'K‑G' : 'D‑B';
+  }
 
   /* ====================================================================
      KURULUM EKRANI
@@ -488,6 +498,7 @@
     selStrain.className = 'f-strain'; selStrain.title = 'Renk';
     selStrain.appendChild(opt('', '—', !d.strain));
     S.STRAINS.forEach(function (s) { selStrain.appendChild(opt(s, S.STRAIN_SYMBOL[s], d.strain === s)); });
+    selStrain.appendChild(opt(S.PASS, 'Pas', d.strain === S.PASS));
 
     const selResult = document.createElement('select');
     selResult.className = 'f-result'; selResult.title = 'Sonuç';
@@ -524,6 +535,7 @@
     row.appendChild(cScore); row.appendChild(cOther); row.appendChild(cNet); row.appendChild(cAct);
 
     fillResults(row, i);
+    pasKilidi(row, i);              // önbellekten gelen pas satırı da kilitli açılır
 
     row.addEventListener('change', function (e) {
       const t = e.target;
@@ -531,7 +543,14 @@
         drafts[i].level = t.value === '' ? null : Number(t.value);
         fillResults(row, i);
       } else if (t.classList.contains('f-strain')) {
-        drafts[i].strain = t.value || null;
+        const oncePas = pasMi(drafts[i]);
+        if (t.value === S.PASS) {
+          pasaCevir(drafts[i]);
+        } else {
+          drafts[i].strain = t.value || null;
+          if (oncePas) { drafts[i].result = null; drafts[i].doubling = 'normal'; }
+        }
+        doldurSatir(i);
       } else if (t.classList.contains('f-result')) {
         drafts[i].result = t.value === '' ? null : Number(t.value);
       } else if (t.classList.contains('f-dbl')) {
@@ -563,6 +582,18 @@
     row.querySelector('.f-dbl').value = d.doubling || 'normal';
     row.querySelector('.f-result').value = (d.result === null || d.result === undefined) ? '' : String(d.result);
     row.querySelector('.f-dir').value = d.direction || '';
+    pasKilidi(row, i);
+  }
+
+  /* Pas seçiliyken seviye / kontr / deklaran kutuları kapanır (sonuç fillResults'ta). */
+  function pasKilidi(row, i) {
+    const pas = pasMi(drafts[i]);
+    ['.f-level', '.f-dbl', '.f-dir'].forEach(function (sel) {
+      const el = row.querySelector(sel);
+      el.disabled = pas;
+      if (pas) el.value = '';
+    });
+    row.classList.toggle('pas', pas);
   }
 
   function fillResults(row, i) {
@@ -570,6 +601,11 @@
     const level = drafts[i].level;
     const prev = drafts[i].result;
     sel.innerHTML = '';
+    if (pasMi(drafts[i])) {                    // pas: sonuç sorulmaz, skor 0
+      sel.appendChild(opt(0, '0', true));
+      sel.disabled = true; drafts[i].result = 0;
+      return;
+    }
     sel.appendChild(opt('', '—', true));
     if (!level) { sel.disabled = true; drafts[i].result = null; return; }
     sel.disabled = false;
@@ -597,15 +633,19 @@
     const b = match.boards[i];
     const d = drafts[i];
     const msg = $('#listMsg');
-    if (!d.level || !d.strain) { note(msg, 'Board ' + b.no + ': kontrat seviyesi ve renk seçilmeli.', 'err'); return; }
-    if (d.result === null || d.result === undefined) { note(msg, 'Board ' + b.no + ': sonuç seçilmeli.', 'err'); return; }
-    if (!d.direction) { note(msg, 'Board ' + b.no + ': deklaran yönü seçilmeli.', 'err'); return; }
-    try {
-      S.calculateBridgeScore({
-        level: d.level, strain: d.strain, result: Number(d.result),
-        vulnerable: vulnFor(b, d.direction), doubling: d.doubling || 'normal'
-      });
-    } catch (e) { note(msg, 'Board ' + b.no + ': ' + e.message, 'err'); return; }
+    if (pasMi(d)) {
+      pasaCevir(d);                            // güvenlik: yarım kalan alanları temizle
+    } else {
+      if (!d.level || !d.strain) { note(msg, 'Board ' + b.no + ': kontrat seviyesi ve renk seçilmeli.', 'err'); return; }
+      if (d.result === null || d.result === undefined) { note(msg, 'Board ' + b.no + ': sonuç seçilmeli.', 'err'); return; }
+      if (!d.direction) { note(msg, 'Board ' + b.no + ': deklaran yönü seçilmeli.', 'err'); return; }
+      try {
+        S.calculateBridgeScore({
+          level: d.level, strain: d.strain, result: Number(d.result),
+          vulnerable: vulnFor(b, d.direction), doubling: d.doubling || 'normal'
+        });
+      } catch (e) { note(msg, 'Board ' + b.no + ': ' + e.message, 'err'); return; }
+    }
 
     const wasSaved = !!b[room];
     b[room] = Object.assign({}, d, { savedAt: new Date().toISOString() });
@@ -659,8 +699,13 @@
       cScore.className = 'c-score muted';
     } else {
       cScore.textContent = (raw > 0 ? '+' : '') + raw;
-      cScore.className = 'c-score ' + (raw >= 0 ? 'pos' : 'neg');
-      cScore.title = sideShort(d.direction) + ' deklaran';
+      if (pasMi(d)) {
+        cScore.className = 'c-score zero';
+        cScore.title = 'Dört pas — board oynanmadı, iki taraf da 0';
+      } else {
+        cScore.className = 'c-score ' + (raw >= 0 ? 'pos' : 'neg');
+        cScore.title = sideShort(d.direction) + ' deklaran';
+      }
     }
 
     const cOther = row.querySelector('.c-other');
@@ -668,8 +713,9 @@
       const tRaw = rawScoreOf(b, theirs);
       cOther.className = 'c-other open';
       cOther.innerHTML = '<span class="lbl">' + labelOf(theirs) + '</span>' +
-        '<span class="dir">' + sideShort(theirs.direction) + '</span>' +
-        '<span class="sc ' + (tRaw >= 0 ? 'pos' : 'neg') + '">' + (tRaw > 0 ? '+' : '') + tRaw + '</span>';
+        (pasMi(theirs) ? '' : '<span class="dir">' + sideShort(theirs.direction) + '</span>') +
+        '<span class="sc ' + (pasMi(theirs) ? 'zero' : (tRaw >= 0 ? 'pos' : 'neg')) + '">' +
+        (tRaw > 0 ? '+' : '') + tRaw + '</span>';
     } else if (girdiMi(b, otherRoom())) {
       cOther.className = 'c-other locked';
       cOther.innerHTML = '<span class="lock">🔒 girildi</span>';
@@ -800,6 +846,12 @@
     });
   }
 
+  /* Yazdırma/CSV metni: "4♥ = (K‑G)" · pas geçilen boardda yalnızca "Pas". */
+  function odaYazi(r) {
+    if (!r.declarerSide) return r.label;
+    return r.label + ' (' + (r.declarerSide === 'NS' ? 'K‑G' : 'D‑B') + ')';
+  }
+
   function buildPrintTable(done, tot) {
     const tb = $('#printRows');
     tb.innerHTML = '';
@@ -812,9 +864,9 @@
       } else {
         tr.innerHTML =
           '<td>' + b.no + '</td>' +
-          '<td>' + r.openRoom.label + ' (' + (r.openRoom.declarerSide === 'NS' ? 'K‑G' : 'D‑B') + ')</td>' +
+          '<td>' + odaYazi(r.openRoom) + '</td>' +
           '<td class="num">' + r.openRoom.rawScore + '</td>' +
-          '<td>' + r.closedRoom.label + ' (' + (r.closedRoom.declarerSide === 'NS' ? 'K‑G' : 'D‑B') + ')</td>' +
+          '<td>' + odaYazi(r.closedRoom) + '</td>' +
           '<td class="num">' + r.closedRoom.rawScore + '</td>' +
           '<td class="num">' + r.netScore + '</td>' +
           '<td class="num">' + r.imps + '</td>' +

@@ -16,6 +16,11 @@
 
   /* Firestore alan adları TR, uygulama içi alanlar EN — iki yönlü çeviri. */
   function disari(e) {
+    /* Pas geçilen board: kontrat yok. Alanlar kuralın beklediği tipte kalsın diye
+       seviye 0, yön '-' yazılır (gerçek bir seviye/yön ile karışmaz). */
+    if (e.strain === 'PASS') {
+      return { seviye: 0, renk: 'PASS', sonuc: 0, kontr: 'normal', yon: '-' };
+    }
     return {
       seviye: Number(e.level), renk: e.strain, sonuc: Number(e.result),
       kontr: e.doubling || 'normal', yon: e.direction
@@ -23,6 +28,9 @@
   }
   function iceri(d) {
     if (!d) return null;
+    if (d.renk === 'PASS') {
+      return { level: null, strain: 'PASS', result: 0, doubling: 'normal', direction: null };
+    }
     return {
       level: d.seviye, strain: d.renk, result: d.sonuc,
       doubling: d.kontr || 'normal', direction: d.yon

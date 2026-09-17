@@ -14,6 +14,10 @@
 
   const STRAINS = ['C', 'D', 'H', 'S', 'NT'];
   const STRAIN_SYMBOL = { C: '♣', D: '♦', H: '♥', S: '♠', NT: 'NT' };
+  /* Dört oyuncu da pas geçti: kontrat yok, board oynanmadı, iki taraf da 0 alır.
+     Renk alanında ayrı bir seçenek olarak durur; seviye/sonuç/deklaran istemez. */
+  const PASS = 'PASS';
+  function isPass(strain) { return strain === PASS; }
   const DIRECTIONS = {
     N: { code: 'N', label: 'Kuzey', short: 'K', side: 'NS' },
     E: { code: 'E', label: 'Doğu', short: 'D', side: 'EW' },
@@ -46,6 +50,7 @@
   function maxUndertricks(level) { return 6 + Number(level); }
 
   function contractLabel(level, strain, result, doubling) {
+    if (isPass(strain)) return 'Pas';
     const d = doubling === 'doubled' ? ' Dbl' : (doubling === 'redoubled' ? ' RDbl' : '');
     const r = result === 0 ? '=' : (result > 0 ? '+' + result : String(result));
     return `${level}${STRAIN_SYMBOL[strain] || strain}${d} ${r}`;
@@ -57,6 +62,7 @@
         Negatif: kontrat battı, deklaran tarafin kaybi
      ---------------------------------------------------------------------- */
   function calculateBridgeScore({ level, strain, result, vulnerable, doubling }) {
+    if (isPass(strain)) return 0;              // pas geçilen board: iki taraf da 0
     const lvl = Number(level);
     const res = Number(result);
     const dbl = doubling || 'normal';
@@ -134,6 +140,14 @@
         board icin "acik oda KG skoru - kapali oda KG skoru" ile ozdestir.
      ---------------------------------------------------------------------- */
   function roomResult(room, entry, openHomeSide, boardNo) {
+    if (isPass(entry.strain)) {
+      return {
+        room, level: null, strain: PASS, result: 0, doubling: 'normal',
+        direction: null, vulnerable: false,
+        contract: 'Pas', label: 'Pas', rawScore: 0,
+        declarerSide: null, declarerTeam: null, teamScore: 0
+      };
+    }
     const vulnerable = (entry.vulnerable === undefined || entry.vulnerable === null)
       ? isVulnerableFor(boardNo, entry.direction)
       : !!entry.vulnerable;
@@ -196,7 +210,7 @@
   }
 
   return {
-    STRAINS, STRAIN_SYMBOL, DIRECTIONS, DOUBLING, VULN_CYCLE,
+    STRAINS, STRAIN_SYMBOL, DIRECTIONS, DOUBLING, VULN_CYCLE, PASS, isPass,
     boardVulnerability, isVulnerableFor, maxOvertricks, maxUndertricks,
     contractLabel, homeSideInRoom,
     calculateBridgeScore, calculateTeamPerspective,
