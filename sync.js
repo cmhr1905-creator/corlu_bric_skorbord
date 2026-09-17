@@ -56,12 +56,15 @@
   /* ---------------------------------------------------------------- maç */
   function macKur(kod, ayar) {
     const d = baslat(); if (!d) return Promise.reject(new Error(kurulumHatasi));
-    return d.doc(macYolu(kod)).set({
+    const belge = {
       ev: ayar.ev, misafir: ayar.misafir,
       boardSayisi: ayar.boardSayisi, openHomeSide: ayar.openHomeSide,
       zon: {},
       olusturuldu: firebase.firestore.FieldValue.serverTimestamp()
-    }).then(function () { return kod; });
+    };
+    /* Maçı kuran odayı da yaz: koda katılan cihaz karşı odaya kendiliğinden atanır. */
+    if (ayar.kuranOda === 'open' || ayar.kuranOda === 'closed') belge.kuranOda = ayar.kuranOda;
+    return d.doc(macYolu(kod)).set(belge).then(function () { return kod; });
   }
 
   function macGetir(kod) {

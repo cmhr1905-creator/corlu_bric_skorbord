@@ -32,7 +32,7 @@
       <div class="step">
         <div class="step-no">1</div>
         <div class="step-body">
-          <h2>Hangi odadasınız?</h2>
+          <h2 id="roomStepTitle">Hangi odadasınız?</h2>
           <div class="room-pick" id="roomPick">
             <button type="button" class="room-card" data-room="open" aria-pressed="false">
               <span class="rc-title">AÇIK ODA</span>
@@ -43,8 +43,13 @@
               <span class="rc-sub">Closed Room</span>
             </button>
           </div>
-          <p class="hint">Her oda kendi skorlarını girer. İki oda da kaydedene kadar
+          <p class="hint" id="roomPickHint">Her oda kendi skorlarını girer. İki oda da kaydedene kadar
              diğer odanın skoru görünmez.</p>
+          <div class="room-auto" id="roomAuto" hidden>
+            <p class="hint"><b>Odanızı seçmenize gerek yok.</b> Maçı kuran cihaz hangi odayı
+               seçtiyse, kodu girip katılan cihaz kendiliğinden <b>diğer odaya</b> atanır.
+               Odanız kâğıt açılınca üstte yazar.</p>
+          </div>
         </div>
       </div>
 

@@ -164,6 +164,7 @@
       $('#panelKatil').hidden = yeni;
       $('#startBtn').textContent = yeni ? 'MAÇI KUR VE KOD AL' : 'MAÇA KATIL';
       $('#localBtn').hidden = !yeni;
+      odaSeciciGoster(yeni);
       note($('#setupMsg'), '');
     });
 
@@ -207,6 +208,15 @@
       $('#resumeBox').hidden = true;
       note($('#setupMsg'), 'Eski maç silindi.', 'ok');
     });
+  }
+
+  /* Koda katılırken oda seçilmez: kuran odanın karşısına kendiliğinden atanır.
+     (Eski, kuranOda bilgisi olmayan maçlarda seçici geri açılır.) */
+  function odaSeciciGoster(goster) {
+    $('#roomPick').hidden = !goster;
+    $('#roomPickHint').hidden = !goster;
+    $('#roomAuto').hidden = goster;
+    $('#roomStepTitle').textContent = goster ? 'Hangi odadasınız?' : 'Odanız otomatik atanır';
   }
 
   function isaretleOda() {
@@ -260,6 +270,7 @@
         '). "İnternetsiz — tek cihazda kullan" ile devam edebilirsiniz.', 'err');
       return;
     }
+    a.kuranOda = setupRoom;                 // katılan cihaz karşı odaya atanacak
     const kod = Sync.kodUret();
     $('#startBtn').disabled = true;
     note($('#setupMsg'), 'Maç kuruluyor…', 'ok');
@@ -274,7 +285,6 @@
   }
 
   function joinMatch() {
-    if (!setupRoom) { note($('#setupMsg'), 'Önce odanızı seçin (Açık Oda / Kapalı Oda).', 'err'); return; }
     const kod = ($('#kodInput').value || '').trim().toUpperCase();
     if (!/^[A-Z0-9]{6}$/.test(kod)) { note($('#setupMsg'), 'Oyun kodu 6 haneli olmalı.', 'err'); return; }
     if (!Sync.kullanilabilir()) {
@@ -286,17 +296,35 @@
     Sync.macGetir(kod).then(function (a) {
       if (!a) { note($('#setupMsg'), 'Bu kodla maç bulunamadı: ' + kod, 'err'); return; }
       const eski = cacheLoad(kod);                       // bu cihaz daha önce girdiyse
+      const oda = katilanOda(a, eski);
+      if (!oda) {                                        // eski sürümde kurulmuş maç
+        odaSeciciGoster(true);
+        note($('#setupMsg'), 'Bu maç odasını bildirmiyor (eski sürüm). Lütfen odanızı kendiniz seçip tekrar deneyin.', 'err');
+        return;
+      }
       match = eski || newMatch(kod, 'cloud', a.ev, a.misafir, a.boardSayisi, a.openHomeSide);
       match.homeTeam = a.ev; match.awayTeam = a.misafir;
       match.openHomeSide = a.openHomeSide;
       uygulaZon(a.zon);
-      room = setupRoom; sessionStorage.setItem(ROOM_KEY, room);
+      room = oda; setupRoom = oda; isaretleOda();
+      sessionStorage.setItem(ROOM_KEY, room);
       cacheSave(); openSheet();
       kodGoster(false);
-      note($('#listMsg'), 'Maça bağlanıldı: ' + kod, 'ok');
+      note($('#listMsg'), 'Maça bağlanıldı: ' + kod + ' — siz ' + ROOM_TR[room] + '\u2019sınız' +
+        (a.kuranOda ? ' (maçı kuran ' + ROOM_TR[a.kuranOda].toLowerCase() + ').' : '.'), 'ok');
     }).catch(function (e) {
       note($('#setupMsg'), 'Bağlanılamadı: ' + e.message, 'err');
     }).then(function () { $('#startBtn').disabled = false; });
+  }
+
+  /* Katılan cihazın odası: kuran oda hangisiyse onun karşısı.
+     Aynı cihaz maçı kuran cihazsa (yerelde kaydı var) kendi odasında kalır.
+     kuranOda yoksa null döner -> kullanıcı kendisi seçer. */
+  function katilanOda(a, eski) {
+    const kuran = a && a.kuranOda;
+    if (kuran !== 'open' && kuran !== 'closed') return setupRoom || null;
+    if (eski && eski.sonOda === kuran) return kuran;    // maçı kuran cihaz geri döndü
+    return kuran === 'open' ? 'closed' : 'open';
   }
 
   function uygulaZon(zon) {
